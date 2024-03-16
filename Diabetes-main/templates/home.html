@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Early Stage Diabetes Detection</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+        }
+        .container {
+            width: 80%;
+            margin: auto;
+            overflow: hidden;
+        }
+        header {
+            background: #35424a;
+            color: white;
+            padding-top: 30px;
+            min-height: 70px;
+            border-bottom: #000000 3px solid;
+        }
+        header h1 {
+            text-align: center;
+            font-size: 26px;
+            margin: 0;
+        }
+        form {
+            margin: 20px;
+            padding: 20px;
+            background: #fff;
+        }
+        .form-element {
+            margin-bottom: 15px;
+        }
+        .form-element label {
+            display: inline-block;
+            margin-right: 10px;
+            padding-bottom: 5px;
+        }
+        .form-element input[type="text"],
+        .form-element input[type="number"],
+        .form-element input[type="submit"] {
+            width: 100%;
+            padding: 10px;
+        }
+        .form-element input[type="submit"] {
+            background: #35424a;
+            color: #fff;
+            margin-top: 20px;
+        }
+        .form-element input[type="submit"]:hover {
+            background: #e8491d;
+            cursor: pointer;
+        }
+        .symptoms-box {
+            border: 2px solid #35424a;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .center-text {
+            text-align: center;
+            font-weight: bold;
+        }  
+    </style>
+    <script>
+        function validateHeightInput() {
+            var feet = document.getElementById("height-feet").value;
+            var inches = document.getElementById("height-inches").value;
+
+            if (feet <= "0" && inches <= "0") {
+                alert("Please enter a valid height greater than 0.");
+                document.getElementById("height-feet").value = "";
+                document.getElementById("height-inches").value = "";
+            }
+        }
+
+        function validateWeightInput() {
+            var weight = document.getElementById("weight").value;
+
+            if (isNaN(weight) || weight <= 0) {
+                alert("Please enter a valid positive number for weight.");
+                document.getElementById("weight").value = "";
+            }
+        }
+    </script>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>Early Stage Diabetes Detection</h1>
+        </div>
+    </header>
+    <div class="container">
+        <form action="{{ url_for('predict') }}" method="POST">
+            <div class="form-element">
+                <label for="age">Age:</label>
+                <input type="text" name="age" value="{{ form_data.get('age', '') }}">
+            </div>
+            <div class="form-element">
+                <label>Gender:</label>
+                <input type="radio" id="male" name="gender" value="male" {% if form_data.get('gender') == 'male' %} checked {% endif %}>
+<label for="male">Male</label>
+                <input type="radio" id="female" name="gender" value="female" {% if form_data.get('gender') == 'female' %} checked {% endif %}>
+<label for="female">Female</label>
+            </div>
+            <div class="form-element">
+                <label for="height-feet">Height (Feet):</label>
+                <input type="number" id="height-feet" name="height-feet" placeholder="Feet" value="{{ form_data.get('height-feet', '') }}"  oninput="validateHeightInput()">
+            </div>
+            <div class="form-element">
+                <label for="height-inches">Height (Inches):</label>
+                <input type="number" id="height-inches" name="height-inches" placeholder="Inches" value="{{ form_data.get('height-inches', '') }}" oninput="validateHeightInput()">
+            </div>
+            <div class="form-element">
+                <label for="weight">Weight (lbs):</label>
+                <input type="number" id="weight" name="weight" placeholder="Pounds" value="{{ form_data.get('weight', '') }}" oninput="validateWeightInput()">
+            </div>
+            <div class="symptoms-box">
+                <p>Please mark all medical conditions that you have been diagnosed with:</p>
+                <input type="checkbox" id="Polyuria" name="Polyuria" {% if form_data.get('Polyuria') %} checked {% endif %}>
+                <label for="Polyuria">Polyuria</label><br>
+                <input type="checkbox" id="Polydipsia" name="Polydipsia" {% if form_data.get('Polydipsia') %} checked {% endif %}>
+                <label for="Polydipsia">Polydipsia</label><br>
+                <input type="checkbox" id="sudden weight loss" name="sudden weight loss" {% if form_data.get('sudden weight loss') %} checked {% endif %}>
+                <label for="sudden weight loss">Sudden weight loss</label><br>
+                <input type="checkbox" id="weakness" name="weakness" {% if form_data.get('weakness') %} checked {% endif %}>
+                <label for="weakness">Weakness</label><br>
+                <input type="checkbox" id="Polyphagia" name="Polyphagia" {% if form_data.get('Polyphagia') %} checked {% endif %}>
+                <label for="Polyphagia">Polyphagia</label><br>
+                <input type="checkbox" id="Genital thrush" name="Genital thrush" {% if form_data.get('Genital thrush') %} checked {% endif %}>
+                <label for="Genital thrush">Genital thrush</label><br>
+                <input type="checkbox" id="visual blurring" name="visual blurring" {% if form_data.get('visual blurring') %} checked {% endif %}>
+                <label for="visual blurring">Visual blurring</label><br>
+                <input type="checkbox" id="Itching" name="Itching" {% if form_data.get('Itching') %} checked {% endif %}>
+                <label for="Itching">Itching</label><br>
+                <input type="checkbox" id="Irritability" name="Irritability" {% if form_data.get('Irritability') %} checked {% endif %}>
+                <label for="Irritability">Irritability</label><br>
+                <input type="checkbox" id="delayed healing" name="delayed healing" {% if form_data.get('delayed healing') %} checked {% endif %}>
+                <label for="delayed healing">Delayed healing</label><br>
+                <input type="checkbox" id="partial paresis" name="partial paresis" {% if form_data.get('partial paresis') %} checked {% endif %}>
+                <label for="partial paresis">Partial paresis</label><br>
+                <input type="checkbox" id="muscle stiffness" name="muscle stiffness" {% if form_data.get('muscle stiffness') %} checked {% endif %}>
+                <label for="muscle stiffness">Muscle stiffness</label><br>
+                <input type="checkbox" id="Alopecia" name="Alopecia" {% if form_data.get('Alopecia') %} checked {% endif %}>
+                <label for="Alopecia">Alopecia</label><br>
+                <input type="checkbox" id="Obesity" name="Obesity" {% if form_data.get('Obesity') %} checked {% endif %}>
+<label for="Obesity">Obesity</label><br>
+            </div>
+	<h4>
+            <div class="form-element">
+                <input type="submit" value="Submit">
+            </div>
+            <div class="center-text">
+                {% if prediction == "Positive" %}
+                    <p>Early Stage Diabetes Detection Result: <span style="color: red;">{{ prediction }}</span></p>
+                {% elif prediction == "Negative" %}
+                    <p>Early Stage Diabetes Detection Result: <span style="color: green;">{{ prediction }}</span></p>
+                {% endif %}
+                {% if prediction_value %}
+                    <p>Detection Probability: {{ prediction_prob }}</p>
+                    <p>Raw prediction value: {{ prediction_value }}</p>
+                {% endif %}
+            </div>
+	</h4>
+        </form>
+    </div>
+</body>
+</html>
