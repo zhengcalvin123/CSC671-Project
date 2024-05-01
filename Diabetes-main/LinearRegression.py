@@ -69,37 +69,5 @@ plt.ylabel('Loss')
 plt.xlabel('Epoch')
 plt.legend(['Train', 'Test'], loc='upper left')
 plt.show()
-X = diabetes.drop('class', axis = 1)
-y = diabetes['class']
 
-scaler = MinMaxScaler(feature_range=(0, 1))
-X_rescaled = scaler.fit_transform(X)
-X = pd.DataFrame(data = X_rescaled, columns = X.columns)
-
-set_of_classes = y.value_counts().index.tolist()
-set_of_classes= pd.DataFrame({'class': set_of_classes})
-y = pd.get_dummies(y)
-
-max_iterations = [500, 1000, 1500, 2000]
-
-hidden_layer_siz = [(32,), (64,), (128,)]
-learning_rates = [0.05, 0.1, 0.15]
-
-param_grid = dict(learning_rate_init = learning_rates, hidden_layer_sizes = hidden_layer_siz, max_iter = max_iterations)
-
-# set model
-mlp = MLPClassifier(solver = 'sgd', random_state = 42, activation = 'logistic', learning_rate_init = 0.3, batch_size = 100, hidden_layer_sizes = (64,), max_iter = 1000)
-
-# For Grid Search
-grid = GridSearchCV(estimator = mlp, param_grid = param_grid)
-
-grid.fit(X,y)
-
-y_pred = grid.predict(X)
-mse = mean_squared_error(y, y_pred)
-print("Optimal Hyper-parameters : ", grid.best_params_)
-print("Optimal Accuracy : ", grid.best_score_)
-print("Minimum MSE: ", mse)
-
-
-diabetes_model.save('model.h5')
+diabetes_model.save('model.keras')
