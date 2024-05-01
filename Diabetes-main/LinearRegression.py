@@ -101,9 +101,5 @@ print("Optimal Hyper-parameters : ", grid.best_params_)
 print("Optimal Accuracy : ", grid.best_score_)
 print("Minimum MSE: ", mse)
 
-# Save the model to disk
-#filename = 'finalized_model.pkl'
-#pickle.dump(diabetes_model, open(filename, 'wb'))
-
 
 diabetes_model.save('model.h5')
