@@ -10,7 +10,7 @@ from torch.utils.data import Dataset, DataLoader
 from sklearn.metrics import confusion_matrix
 import matplotlib.pyplot as plt
 
-# Load the dataset
+# Load the dataset in CSC671-Project\Diabetes-main> 
 df_data = pd.read_csv("diabetes_data_upload.csv")
 
 # Extract the feature and target
@@ -24,12 +24,12 @@ for feature in feature_names:
     df_data[feature] = label_encoder.fit_transform(df_data[feature])
 
 # Initialize KFold
-kf = KFold(n_splits=5, shuffle=True, random_state=42)
+kf = KFold(n_splits=4, shuffle=True, random_state=42)
 
 # Standardize the data
 scaler = StandardScaler()
-X = scaler.fit_transform(df_data.iloc[:, 1:-1])
-y = df_data['class'].replace({'Positive': 1, 'Negative': 0})  # Encoding binary labels
+X = scaler.fit_transform(df_data.iloc[:, 0:-1])
+y = df_data['class'] # Encoding binary labels
 
 # Define the MLP model
 class MLPModel(torch.nn.Module):
@@ -66,17 +66,20 @@ class MyDataset(Dataset):
 criterion = torch.nn.BCELoss()
 
 # Training loop
-num_epochs = 100
+num_epochs = 50
 
 num_folds = kf.get_n_splits(X)
+# Calculate confusion matrix
 num_rows = num_folds // 2 + num_folds % 2
 fig, axs = plt.subplots(nrows=num_rows, ncols=2, figsize=(12, num_rows * 5))
 
 for fold, (train_index, test_index) in enumerate(kf.split(X)):
+    print(f"---------------------------------------------------------")
     model = MLPModel(num_features=X.shape[1])  # Initialize the model for each fold
     optimizer = optim.Adam(model.parameters(), lr=0.001)  # Define optimizer for each fold
     
-    train_loss = []  # Store train loss for each fold
+    plt_test_loss=[]    # Store test loss for each fold
+    plt_train_loss = []  # Store train loss for each fold
     test_losses = []  # Store test loss for each fold
     test_accuracy = []  # Store test accuracy for each fold
     
@@ -92,30 +95,45 @@ for fold, (train_index, test_index) in enumerate(kf.split(X)):
     train_loader = DataLoader(dataset=train_ds, batch_size=32, shuffle=True)
     
     for epoch in range(num_epochs):
+        epoch_train_loss = 0.0
+        num_batches_train = 0
         for inputs, targets in train_loader:
             optimizer.zero_grad()
             outputs = model(inputs)
             loss = criterion(outputs, targets)
             loss.backward()
             optimizer.step()
-            train_loss.append(loss.item())
+            epoch_train_loss += loss.item()
+            num_batches_train += 1
 
-    # Evaluation
-    test_ds = MyDataset(x_test_tensor, y_test_tensor)
-    test_loader = DataLoader(dataset=test_ds, batch_size=32, shuffle=False)  # No need to shuffle test data
+        # Calculate average training loss per epoch
+        epoch_train_loss /= num_batches_train
+        plt_train_loss.append(epoch_train_loss)
 
-    test_outputs = []  # Store test predictions
+        # Evaluation
+        test_ds = MyDataset(x_test_tensor, y_test_tensor)
+        test_loader = DataLoader(dataset=test_ds, batch_size=32, shuffle=False)  # No need to shuffle test data
 
-    with torch.no_grad():
-        model.eval()
-        for inputs, targets in test_loader:
-            outputs = model(inputs)
-            loss = criterion(outputs, targets)
-            test_losses.append(loss.item())
-            predictions = (outputs >= 0.5).float()
-            accuracy = (predictions == targets).float().mean().item()
-            test_accuracy.append(accuracy)
-            test_outputs.extend(predictions.squeeze().cpu().numpy())
+        test_outputs = []  # Store test predictions
+        
+        epoch_test_loss = 0.0
+        num_batches_test = 0
+        with torch.no_grad():
+            model.eval()
+            for inputs, targets in test_loader:
+                outputs = model(inputs)
+                loss = criterion(outputs, targets)
+                test_losses.append(loss.item())
+                predictions = (outputs >= 0.5).float()
+                accuracy = (predictions == targets).float().mean().item()
+                test_accuracy.append(accuracy)
+                test_outputs.extend(predictions.squeeze().cpu().numpy())
+                epoch_test_loss = +loss.item()
+                num_batches_test += 1
+
+        # Calculate average test loss per epoch
+        epoch_test_loss /= num_batches_test
+        plt_test_loss.append(epoch_test_loss)
 
     # Calculate overall test loss and accuracy
     overall_test_loss = np.mean(test_losses)
@@ -123,7 +141,6 @@ for fold, (train_index, test_index) in enumerate(kf.split(X)):
 
     print(f"Fold {fold+1}, Overall Test Loss: {overall_test_loss}, Overall Test Accuracy: {overall_test_accuracy}")
 
-    # Calculate confusion matrix
     conf_matrix = confusion_matrix(y_test_tensor.numpy(), np.array(test_outputs))
     print("Confusion Matrix:")
     print(conf_matrix)
@@ -147,6 +164,9 @@ for fold, (train_index, test_index) in enumerate(kf.split(X)):
     ax.set_ylabel('True label')
     ax.set_xlabel('Predicted label')
 
+# Print out the shapes
+print(f"Fold {fold+1} Train Data Shape: {x_train_fold.shape}, Test Data Shape: {x_test_fold.shape}")
+
 # If there's an empty subplot, remove it
 if num_folds % 2 != 0:
     fig.delaxes(axs[num_rows - 1, 1])
@@ -155,13 +175,11 @@ if num_folds % 2 != 0:
 plt.tight_layout()
 plt.show()
 
-
 # Plot both training and test loss
-plt.plot(train_loss, label='Train Loss')
-test_loss_iteration = np.linspace(0, num_epochs * len(train_loss) // num_epochs, len(test_losses), endpoint=False)
-plt.plot(test_loss_iteration, test_losses, marker='o', linestyle='', label='Test Loss')
+plt.plot(plt_train_loss, label='Train Loss')
+plt.plot(plt_test_loss, label='Test Loss')
 plt.legend()
-plt.xlabel('Iteration')
+plt.xlabel('Epoch')
 plt.ylabel('Loss')
 plt.title('Training and Test Loss')
 plt.show()
