@@ -73,10 +73,10 @@ recall['Sklearn MultinomialNB'] = recall_multinomialNB
 f1['Sklearn MultinomialNB'] = f1_multinomialNB
 
 models['Manual Sklearn Decision Trees'] = 0
-accuracy['Manual Sklearn Decision Trees'] = 0.91346
-precision['Manual Sklearn Decision Trees'] = 0
-recall['Manual Sklearn Decision Trees'] = 0
-f1['Manual Sklearn Decision Trees'] = 0
+accuracy['Manual Sklearn Decision Trees'] = 0.9711
+precision['Manual Sklearn Decision Trees'] = 0.9531
+recall['Manual Sklearn Decision Trees'] = 1.000
+f1['Manual Sklearn Decision Trees'] = 0.9760
 
 models['Logistic Regression'] = 0
 accuracy['Logistic Regression'] = 0.9615
