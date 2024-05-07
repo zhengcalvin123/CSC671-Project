@@ -7,7 +7,7 @@ from sklearn.metrics import accuracy_score
 from sklearn.tree import plot_tree
 
 # data preprocessing
-data_features = pd.read_csv("diabetes_data_upload.csv")
+data_features = pd.read_csv("..\\diabetes_data_upload.csv")
 data_labels = data_features.loc[:, ["class"]]
 data_features = data_features.drop("class", axis=1)
 
@@ -21,6 +21,7 @@ best_params = ""
 best_acc = 0
 dtree = any
 
+# hyperparameters tuning
 for criterion in ["gini", "entropy"]:
     for max_depth in range(2, 15):
         for min_samples_leaf in range(1, 20):
@@ -43,4 +44,4 @@ plot_tree(dtree,
           impurity=False,
           proportion=True,
           filled=True)
-fig.savefig("Diabetes_decision_tree.png")
+fig.savefig("Diabetes Decision Tree.png")
