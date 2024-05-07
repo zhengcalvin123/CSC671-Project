@@ -2,11 +2,12 @@ import numpy as np
 import torch
 from torch.utils.data import Dataset, DataLoader
 import torch.nn.functional as F
+import torchmetrics
 from sklearn.model_selection import train_test_split
 import pandas as pd
 import matplotlib.pyplot as plt
 from sklearn.metrics import accuracy_score, precision_score, recall_score
-
+from torchmetrics.classification import BinaryPrecision
 
 torch.manual_seed(123)
 device = "cuda:0" if torch.cuda.is_available() else "cpu"
@@ -140,22 +141,32 @@ def compute_loss(model, dataloader):
     return total_loss / total_example
 
 
-def compute_accuracy(model, dataloader):
+def compute_metrics(model, dataloader):
     model = model.eval()
 
-    correct = 0.0
-    total_examples = 0
+    true_positives = 0
+    false_positives = 0
+    true_negatives = 0
+    false_negatives = 0
 
     for idx, (features, labels) in enumerate(dataloader):
-        with torch.inference_mode():  # same as torch.no_grad
+        with torch.inference_mode():
+            # same as torch.no_grad
             logits = model(features)
 
         predictions = (logits > 0.5).float()
-        compare = torch.eq(predictions, labels).float()
-        correct += torch.sum(compare)
-        total_examples += len(compare)
 
-    return correct / total_examples
+        true_positives += torch.sum((predictions == 1) & (labels == 1))
+        false_positives += torch.sum((predictions == 1) & (labels == 0))
+        true_negatives += torch.sum((predictions == 0) & (labels == 0))
+        false_negatives += torch.sum((predictions == 0) & (labels == 1))
+
+    accuracy = (true_positives + true_negatives) / (true_positives + true_negatives + false_positives + false_negatives)
+    precision = true_positives / (true_positives + true_negatives)
+    recall = true_positives / (true_positives + false_negatives)
+    f1_score = 2 * (precision * recall) / (precision + recall)
+
+    return accuracy, precision, recall, f1_score
 
 
 model = MLP(num_features=data_features.shape[1], num_classes=1)
@@ -188,17 +199,27 @@ for epoch in range(num_epochs):
     val_loss = compute_loss(model, val_loader)
     if early_stopping.early_stop(val_loss):
         break
-    # print(f"Train Acc {train_acc * 100:.2f}% | Val Acc {val_acc * 100:.2f}%")
 
 epochs = list(range(0, len(losses)))
 
-train_acc = compute_accuracy(model, train_loader)
-val_acc = compute_accuracy(model, val_loader)
-test_acc = compute_accuracy(model, test_loader)
+train_metrics = compute_metrics(model, train_loader)
+val_metrics = compute_metrics(model, val_loader)
+test_metrics = compute_metrics(model, test_loader)
 
-print(f"Train Acc {train_acc*100:.2f}%")
-print(f"Val Acc {val_acc*100:.2f}%")
-print(f"Test Acc {test_acc*100:.2f}%")
+print(f"Train Accuracy {train_metrics[0] * 100:.2f}% \n"
+      f"Train Precision {train_metrics[1] * 100:.2f}% \n"
+      f"Train Recall {train_metrics[2] * 100:.2f}% \n"
+      f"Train f1 score {train_metrics[3] * 100:.2f}%")
+
+print(f"Validation Accuracy {val_metrics[0] * 100:.2f}% \n"
+      f"Validation Precision {val_metrics[1] * 100:.2f}% \n"
+      f"Validation Recall {val_metrics[2] * 100:.2f}% \n"
+      f"Validation f1 score {val_metrics[3] * 100:.2f}%")
+
+print(f"Test Accuracy {test_metrics[0] * 100:.2f}% \n"
+      f"Test Precision {test_metrics[1] * 100:.2f}% \n"
+      f"Test Recall {test_metrics[2] * 100:.2f}% \n"
+      f"Test f1 score {test_metrics[3] * 100:.2f}%")
 
 plt.title("Training Loss vs Epochs")
 plt.xlabel("Epochs")

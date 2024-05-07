@@ -1,12 +1,12 @@
 import numpy as np
 from sklearn.model_selection import train_test_split
-from sklearn.naive_bayes import GaussianNB
+from sklearn.naive_bayes import GaussianNB, MultinomialNB, BernoulliNB
 from sklearn.svm import LinearSVC
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import accuracy_score, precision_score, recall_score
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 import pandas as pd
 import matplotlib.pyplot as plt
 
@@ -31,12 +31,19 @@ x_normal = (x_values - x_mean) / x_std
 x_train, x_test, y_train, y_test = train_test_split(
     x_normal, y_values, test_size=0.2, random_state=1, stratify=y_values)
 
+# non-negative dataset
+xx_train, xx_test, yy_train, yy_test = train_test_split(
+    x_values, y_values, test_size=0.2, random_state=1, stratify=y_values)
 
-models = {'Sklearn Logistic Regression': LogisticRegression(), 'Sklearn Support Vector Machines': LinearSVC(dual=True),
-          'Sklearn Random Forest': RandomForestClassifier(), 'Sklearn Naive Bayes': GaussianNB(),
-          'Sklearn K-Nearest Neighbor': KNeighborsClassifier(), 'Sklearn Decision Trees': DecisionTreeClassifier()}
+models = {'Sklearn Logistic Regression': LogisticRegression(),
+          'Sklearn Support Vector Machines': LinearSVC(dual=True),
+          'Sklearn Random Forest': RandomForestClassifier(),
+          'Sklearn GaussianNB': GaussianNB(),
+          'Sklearn BernoulliNB': BernoulliNB(),
+          'Sklearn K-Nearest Neighbor': KNeighborsClassifier(),
+          'Sklearn Decision Trees': DecisionTreeClassifier()}
 
-accuracy = {}
+accuracy, precision, recall, f1 = {}, {}, {}, {}
 
 for key in models.keys():
     # Fit the classifier
@@ -47,20 +54,49 @@ for key in models.keys():
 
     # Calculate metrics
     accuracy[key] = accuracy_score(predictions, y_test)
+    precision[key] = precision_score(predictions, y_test)
+    recall[key] = recall_score(predictions, y_test)
+    f1[key] = f1_score(predictions, y_test)
+
+model = MultinomialNB()
+model.fit(xx_train, yy_train)
+predictions = model.predict(xx_test)
+accuracy_multinomialNB = accuracy_score(predictions, yy_test)
+precision_multinomialNB = precision_score(predictions, yy_test)
+recall_multinomialNB = recall_score(predictions, yy_test)
+f1_multinomialNB = f1_score(predictions, yy_test)
+
+models['SkLearn MultinomialNB'] = 0
+accuracy['Sklearn MultinomialNB'] = accuracy_multinomialNB
+precision['Sklearn MultinomialNB'] = precision_multinomialNB
+recall['Sklearn MultinomialNB'] = recall_multinomialNB
+f1['Sklearn MultinomialNB'] = f1_multinomialNB
 
 models['Manual Sklearn Decision Trees'] = 0
 accuracy['Manual Sklearn Decision Trees'] = 0.91346
+precision['Manual Sklearn Decision Trees'] = 0
+recall['Manual Sklearn Decision Trees'] = 0
+f1['Manual Sklearn Decision Trees'] = 0
 
 models['Logistic Regression'] = 0
 accuracy['Logistic Regression'] = 0.9615
+precision['Logistic Regression'] = 0.6100
+recall['Logistic Regression'] = 0.9531
+f1['Logistic Regression'] = 0.7439
 
 models['MLP'] = 0
 accuracy['MLP'] = 0.9712
+precision['MLP'] = 0.6139
+recall['MLP'] = 0.9688
+f1['MLP'] = 0.7515
 
-df_model = pd.DataFrame(index=models.keys(), columns=['Accuracy'])
+df_model = pd.DataFrame(index=models.keys(), columns=['Accuracy', 'Precision', 'Recall', 'F1-Score'])
 df_model['Accuracy'] = accuracy.values()
+df_model['Precision'] = precision.values()
+df_model['Recall'] = recall.values()
+df_model['F1-Score'] = f1.values()
 
-df_model = df_model.sort_values(by=['Accuracy'])
+df_model = df_model.sort_values(by=['Accuracy'], ascending=True)
 
 print(df_model)
 
