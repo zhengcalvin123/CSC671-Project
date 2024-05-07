@@ -30,15 +30,13 @@ x_normal = (x_values - x_mean) / x_std
 
 x_train, x_test, y_train, y_test = train_test_split(
     x_normal, y_values, test_size=0.2, random_state=1, stratify=y_values)
-x_train, x_val, y_train, y_val = train_test_split(
-    x_train, y_train, test_size=0.1, random_state=1, stratify=y_train)
 
 
 models = {'Sklearn Logistic Regression': LogisticRegression(), 'Sklearn Support Vector Machines': LinearSVC(dual=True),
           'Sklearn Random Forest': RandomForestClassifier(), 'Sklearn Naive Bayes': GaussianNB(),
           'Sklearn K-Nearest Neighbor': KNeighborsClassifier(), 'Sklearn Decision Trees': DecisionTreeClassifier()}
 
-accuracy, precision, recall = {}, {}, {}
+accuracy = {}
 
 for key in models.keys():
     # Fit the classifier
@@ -49,23 +47,18 @@ for key in models.keys():
 
     # Calculate metrics
     accuracy[key] = accuracy_score(predictions, y_test)
-    precision[key] = precision_score(predictions, y_test)
-    recall[key] = recall_score(predictions, y_test)
+
+models['Manual Sklearn Decision Trees'] = 0
+accuracy['Manual Sklearn Decision Trees'] = 0.91346
 
 models['Logistic Regression'] = 0
 accuracy['Logistic Regression'] = 0.9615
-precision['Logistic Regression'] = 0
-recall['Logistic Regression'] = 0
 
 models['MLP'] = 0
 accuracy['MLP'] = 0.9712
-precision['MLP'] = 0
-recall['MLP'] = 0
 
-df_model = pd.DataFrame(index=models.keys(), columns=['Accuracy', 'Precision', 'Recall'])
+df_model = pd.DataFrame(index=models.keys(), columns=['Accuracy'])
 df_model['Accuracy'] = accuracy.values()
-df_model['Precision'] = precision.values()
-df_model['Recall'] = recall.values()
 
 df_model = df_model.sort_values(by=['Accuracy'])
 
