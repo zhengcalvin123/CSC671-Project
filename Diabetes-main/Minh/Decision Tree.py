@@ -25,7 +25,6 @@ dtree = any
 for criterion in ["gini", "entropy"]:
     for max_depth in range(2, 15):
         for min_samples_leaf in range(1, 20):
-            min_samples_leaf *= 5
             dtree = DecisionTreeClassifier(max_depth=max_depth, criterion=criterion, min_samples_leaf=min_samples_leaf)
             dtree.fit(x_train, y_train)
             test_prediction = dtree.predict(x_test)
