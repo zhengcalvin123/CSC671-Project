@@ -2,15 +2,12 @@ import numpy as np
 import torch
 from torch.utils.data import Dataset, DataLoader
 import torch.nn.functional as F
-import torchmetrics
 from sklearn.model_selection import train_test_split
 import pandas as pd
 import matplotlib.pyplot as plt
-from sklearn.metrics import accuracy_score, precision_score, recall_score
-from torchmetrics.classification import BinaryPrecision
 
 torch.manual_seed(123)
-device = "cuda:0" if torch.cuda.is_available() else "cpu"
+device = "cuda" if torch.cuda.is_available() else "cpu"
 
 # data preprocessing
 data_features = pd.read_csv("..\\diabetes_data_upload.csv")
@@ -37,10 +34,32 @@ x_train, x_val, y_train, y_val = train_test_split(
 
 
 class MLP(torch.nn.Module):
-    def __init__(self, num_features, num_classes):
+    def __init__(self, num_features, num_classes, num_layers):
         super().__init__()
         # using non-linear relu activation function for faster convergence
 
+        # minimum 3 layers in the system
+        num_layers = max(num_layers, 1)
+
+        # 1st and last layer are always the same
+        modules = []
+
+        modules.append(torch.nn.Linear(num_features, 25))
+        modules.append(torch.nn.ReLU())
+        modules.append(torch.nn.BatchNorm1d(25))
+        modules.append(torch.nn.Dropout(p=0.5))
+
+        for i in range(num_layers):
+            modules.append(torch.nn.Linear(25, 25))
+            modules.append(torch.nn.ReLU())
+            modules.append(torch.nn.BatchNorm1d(25))
+            modules.append(torch.nn.Dropout(p=0.5))
+
+        modules.append(torch.nn.Linear(25, num_classes))
+
+        self.all_layers = torch.nn.Sequential(*modules)
+
+        """
         self.all_layers = torch.nn.Sequential(
             # using non-linear activation sigmoid
 
@@ -59,6 +78,7 @@ class MLP(torch.nn.Module):
             # 3rd hidden layer
             torch.nn.Linear(25, num_classes)
         )
+        """
 
     def forward(self, x):
         logits = self.all_layers(x)
@@ -87,7 +107,9 @@ class EarlyStopping(object):
 class MyDataSet(Dataset):
     def __init__(self, x, y):
         self.features = torch.tensor(x, dtype=torch.float32)
+        self.features.to(device)
         self.labels = torch.tensor(y, dtype=torch.float32)
+        self.labels.to(device)
 
     def __getitem__(self, index):
         x = self.features[index]
@@ -101,24 +123,6 @@ class MyDataSet(Dataset):
 train_ds = MyDataSet(x_train, y_train)
 val_ds = MyDataSet(x_val, y_val)
 test_ds = MyDataSet(x_test, y_test)
-
-train_loader = DataLoader(
-    dataset=train_ds,
-    batch_size=10,
-    shuffle=True
-)
-
-val_loader = DataLoader(
-    dataset=val_ds,
-    batch_size=10,
-    shuffle=False,
-)
-
-test_loader = DataLoader(
-    dataset=test_ds,
-    batch_size=10,
-    shuffle=False,
-)
 
 
 def compute_loss(model, dataloader):
@@ -169,60 +173,127 @@ def compute_metrics(model, dataloader):
     return accuracy, precision, recall, f1_score
 
 
-model = MLP(num_features=data_features.shape[1], num_classes=1)
-model = model.to(device)
-optimizer = torch.optim.Adam(model.parameters(), lr=0.01, weight_decay=0.001)
-early_stopping = EarlyStopping(patience=25, min_delta=0.0001)
+epochs = [50, 100]
+batch_sizes = [20, 40, 60]
+learning_rates = [0.1, 0.01, 0.001]
+optimizers = [torch.optim.SGD, torch.optim.Adam, torch.optim.Adadelta]
+num_layers = [1, 2]
 
-num_epochs = 200
+total_losses = []
+total_epochs = []
 
-losses = []
+accuracies = []
+precisions = []
+recalls = []
+f1s = []
+names = []
 
-for epoch in range(num_epochs):
+hyperparameters = []
 
-    model = model.train()
-    for batch_idx, (features, labels) in enumerate(train_loader):
-        logits = model(features)
+iter = 1
 
-        loss = F.binary_cross_entropy_with_logits(logits, labels)
+for epoch in epochs:
+    for batch_size in batch_sizes:
+        for learning_rate in learning_rates:
+            for optimizer in optimizers:
+                for num_layer in num_layers:
+                    train_loader = DataLoader(
+                        dataset=train_ds,
+                        batch_size=batch_size,
+                        shuffle=True
+                    )
 
-        # backward pass
-        optimizer.zero_grad()
-        loss.backward()
+                    val_loader = DataLoader(
+                        dataset=val_ds,
+                        batch_size=batch_size,
+                        shuffle=False,
+                    )
 
-        # update model parameters
-        optimizer.step()
+                    test_loader = DataLoader(
+                        dataset=test_ds,
+                        batch_size=batch_size,
+                        shuffle=False,
+                    )
 
-    train_loss = compute_loss(model, train_loader)
-    losses.append(train_loss)
+                    model = MLP(num_features=data_features.shape[1], num_classes=1, num_layers=num_layer)
+                    model = model.to(device)
+                    optim = optimizer(model.parameters(), lr=learning_rate, weight_decay=0.001)
+                    early_stopping = EarlyStopping(patience=25, min_delta=0.0001)
 
-    val_loss = compute_loss(model, val_loader)
-    if early_stopping.early_stop(val_loss):
-        break
+                    losses = []
 
-epochs = list(range(0, len(losses)))
+                    for curr_epoch in range(epoch):
+                        model = model.train()
+                        for batch_idx, (features, labels) in enumerate(train_loader):
+                            logits = model(features)
 
-train_metrics = compute_metrics(model, train_loader)
-val_metrics = compute_metrics(model, val_loader)
-test_metrics = compute_metrics(model, test_loader)
+                            loss = F.binary_cross_entropy_with_logits(logits, labels)
 
-print(f"Train Accuracy {train_metrics[0] * 100:.2f}% \n"
-      f"Train Precision {train_metrics[1] * 100:.2f}% \n"
-      f"Train Recall {train_metrics[2] * 100:.2f}% \n"
-      f"Train f1 score {train_metrics[3] * 100:.2f}%")
+                            # backward pass
+                            optim.zero_grad()
+                            loss.backward()
 
-print(f"Validation Accuracy {val_metrics[0] * 100:.2f}% \n"
-      f"Validation Precision {val_metrics[1] * 100:.2f}% \n"
-      f"Validation Recall {val_metrics[2] * 100:.2f}% \n"
-      f"Validation f1 score {val_metrics[3] * 100:.2f}%")
+                            # update model parameters
+                            optim.step()
 
-print(f"Test Accuracy {test_metrics[0] * 100:.2f}% \n"
-      f"Test Precision {test_metrics[1] * 100:.2f}% \n"
-      f"Test Recall {test_metrics[2] * 100:.2f}% \n"
-      f"Test f1 score {test_metrics[3] * 100:.2f}%")
+                        train_loss = compute_loss(model, train_loader)
+                        losses.append(train_loss)
+
+                        val_loss = compute_loss(model, val_loader)
+                        if early_stopping.early_stop(val_loss):
+                            break
+
+                    # train_metrics = compute_metrics(model, train_loader)
+                    # val_metrics = compute_metrics(model, val_loader)
+                    test_metrics = compute_metrics(model, test_loader)
+
+                    accuracies.append(test_metrics[0])
+                    precisions.append(test_metrics[1])
+                    recalls.append(test_metrics[2])
+                    f1s.append(test_metrics[3])
+
+                    """
+                    print(f"Train Accuracy {train_metrics[0] * 100:.2f}% \n"
+                          f"Train Precision {train_metrics[1] * 100:.2f}% \n"
+                          f"Train Recall {train_metrics[2] * 100:.2f}% \n"
+                          f"Train f1 score {train_metrics[3] * 100:.2f}%")
+
+                    print(f"Validation Accuracy {val_metrics[0] * 100:.2f}% \n"
+                          f"Validation Precision {val_metrics[1] * 100:.2f}% \n"
+                          f"Validation Recall {val_metrics[2] * 100:.2f}% \n"
+                          f"Validation f1 score {val_metrics[3] * 100:.2f}%")
+
+                    print(f"Test Accuracy {test_metrics[0] * 100:.2f}% \n"
+                          f"Test Precision {test_metrics[1] * 100:.2f}% \n"
+                          f"Test Recall {test_metrics[2] * 100:.2f}% \n"
+                          f"Test f1 score {test_metrics[3] * 100:.2f}%")
+                    """
+                    print(f"{iter}: {test_metrics}")
+
+                    curr_epochs = list(range(0, len(losses)))
+
+                    total_losses.append(losses)
+                    total_epochs.append(curr_epochs)
+                    names.append(str(iter))
+                    iter += 1
+
+                    hyperparameters.append([epoch, batch_size, learning_rate, optimizer, num_layer])
+
 
 plt.title("Training Loss vs Epochs")
 plt.xlabel("Epochs")
 plt.ylabel("Training Loss")
-plt.plot(epochs, losses)
+
+idx = 0
+
+for losses in total_losses:
+    print(f"plot {names[idx]} params: {hyperparameters[idx]}")
+    plt.plot(total_epochs[idx], losses, label=names[idx])
+    idx += 1
+
 plt.show()
+
+temp = accuracies[:]
+temp.sort()
+
+print(temp)
